@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title> SimpleSpotBot </title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <!-- https://flask-socketio.readthedocs.io/en/latest/intro.html#version-compatibility -->
+
+    <link rel="stylesheet" href="{{url_for('static', filename='css/main.css')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='iziToast/css/iziToast.css')}}">
+    <script type="text/javascript" src="{{url_for('static', filename='iziToast/js/iziToast.js')}}" charset="utf-8"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='js/main.js')}}" charset="utf-8"></script>
+  <div style="display: flex; align-items: center;">
+    <table>
+      <tr>
+        <th><a href="/">Summary</a></th>
+        <th><a href="/settings">Settings</a></th>
+        <th><a href="/admin">Admin UI Template</a></th>
+      </tr>
+    </table>
+    <div style="margin-left: 12px;" data-timestamp>{{timestamp}}</div>
+  </div>
+	
+</head>
+
+<body>
+    <table id="coin-table" class="data" border="1" style="width: 100%; margin-top: 20px; text-align: center;">
+        <tr>
+            <th colspan="14" style="text-align: center;">Wallet Data ({{wallet_summary}})</th>
+        </tr>
+        <tr>
+            <th>Name</th>
+            <th>Exchange</th>
+            <th>Price</th>
+
+            <th>Alert Counts</th>
+            <th>Last Alert Action</th>
+            <th>Trade Counts</th>
+            <th>Last Trade Action</th>
+
+            <th>Created Date</th>
+            <th>Updated Date</th>
+
+            <th>Balance</th>
+            <th>Total PNL</th>
+            <th>Total PNL %</th>
+            <th>Avg_PNL</th>
+            <th>Avg_PNL %</th>
+        </tr>
+
+
+        {% for alert in allAlerts %}
+        <tr data-row-id="{{ alert.coin }}">
+            <td data-col-id="full_name" style="max-width: 10em;">{{alert.full_name}}</td>
+            <td data-col-id="exchange">{{alert.exchange}}</td>
+            <td data-col-id="price">{{alert.price}}</td>
+
+            <td data-col-id="alert_count" style="width: 20px;">{{alert.alert_count}}</td>
+            <td data-col-id="last_alert_action" style="width: 20px;">{{alert.last_alert_action}}</td>
+            <td data-col-id="trade_count" style="width: 20px;">{{alert.trade_count}}</td>
+            <td data-col-id="last_trade_action" style="width: 20px;">{{alert.last_trade_action}}</td>
+
+            <td data-col-id="created_date" style="max-width: 10em;">{{alert.created_date}}</td>
+            <td data-col-id="updated_date" style="max-width: 10em;">{{alert.updated_date}}</td>
+            <td data-col-id="balance" style="max-width: 10em;">{% autoescape false %} {{alert.balance}} {% endautoescape %}</td>
+            {% autoescape false %}
+            <td data-col-id="total_pnl">{{ alert.total_pnl }}</td>
+            <td data-col-id="total_pnl_percent">{{ alert.total_pnl_percent }}</td>
+            {% endautoescape %}
+            {% if alert.avg_pnl !='' %}
+            <td data-col-id="avg_pnl" style="min-width: 9em;">
+                {% else %}
+                <td>
+                    {% endif %} {% autoescape false %} {{alert.avg_pnl}} {% endautoescape %}</td>
+                {% if alert.avg_pnl_percent !='' %}
+                <td data-col-id="avg_pnl_percent" style="min-width: 6em;">{% else %}
+                    <td>
+                        {% endif %} {% autoescape false %} {{alert.avg_pnl_percent}} {% endautoescape %}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+    <br>
+
+    <table id="trade-table" class="data" border="1" style="width: 100%; margin-top: 20px; text-align: center;">
+        <tr>
+            <th colspan="10" style="text-align: center;">Trades Data <i><a id="download_trade">download</a> <a style="visibility:hidden" id="clear_trades">clear</a></i></th>
+        </tr>
+        <tr>
+            <th>Id</th>
+            <th>Coin</th>
+            <th>Created Date</th>
+            <th>Updated Date</th>
+            <th>Trade Time</th>
+            <th>Buy Price</th>
+            <th>Sell Price</th>
+            <th>Qty</th>
+            <th>PNL</th>
+            <th>PNL %</th>
+        </tr>
+
+        {% for trade in allTrades %}
+            {% if trade.close_price == -1.0 %}
+                {% if trade.open_price > 0 %}
+                    <tr style="background-color: #98e2abd2" data-row_id="{{ trade._id }}">
+                {% else %}
+                    <tr style="background-color: #e2c498d2" data-row_id="{{ trade._id }}">
+                {% endif %}
+            {% else %}
+                <tr style="background-color: white" data-row_id="{{ trade._id }}">
+            {% endif %}
+            <td data-col-id="_id">{{trade._id}}</td>
+            <td data-col-id="coin">{{trade.coin}}</td>
+            <td data-col-id="created_date">{{trade.created_date}}</td>
+            <td data-col-id="updated_date">{{trade.updated_date}}</td>
+            <td data-col-id="diff_date">{{trade.updated_date - trade.created_date}}</td>
+            <td data-col-id="open_price">{{trade.open_price}}</td>
+            <td data-col-id="close_price">{% if trade.close_price != -1.0 %}{{trade.close_price}}{% endif %}</td>
+            <td data-col-id="qty">{{ '%0.4f' % trade.qty|float }}</td>
+            <td data-col-id="pnl">{% if trade.pnl != -1.0 %}{{ '%0.4f USDT' % trade.pnl|float }}{% endif %}</td>
+            <td data-col-id="pnl_percent">{% if trade.pnl_percent != -1.0 %}{{ '%0.4f %%' % trade.pnl_percent|float }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+    <br>
+    <table class="data" border="1" style="width: auto; margin-top: 20px; text-align: left;">
+        <tr>
+            <th colspan="2" style="text-align: center">
+                To create new alert
+            </th>
+        </tr>
+        <tr>
+            <td colspan="2">
+                goto <a href="https://www.tradingview.com/chart">https://www.tradingview.com/chart</a>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                add your indicator signal
+            </td>
+        </tr>
+        <tr>
+            <td>
+                add alert for the signal <b>Buy</b>
+            </td>
+            <td>
+                add alert for the signal <b>Sell</b>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Options:
+                <ul>
+                    <li>Once per bar close</li>
+                    <li>Open-ended</li>
+                    <li>Webhook URL : {{ app_url }}signal &nbsp;</li>
+                    <li>Alert name : AI Signals Buy 1min
+                        <COIN>
+                    </li>
+                    <li>message : <br> {% autoescape false %} {{ sample_alert.buy.replace('\n','<br>') }} {% endautoescape %}
+                    </li>
+                </ul>
+            </td>
+            <td>
+                Options:
+                <ul>
+                    <li>Once per bar close</li>
+                    <li>Open-ended</li>
+                    <li>Webhook URL : {{ app_url }}signal &nbsp;</li>
+                    <li>Alert name : AI Signals Sell 1min
+                        <COIN>
+                    </li>
+                    <li>message : <br> {% autoescape false %} {{ sample_alert.sell.replace('\n','<br>') }} {% endautoescape %}
+                    </li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+</body>
